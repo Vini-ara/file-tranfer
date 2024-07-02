@@ -16,8 +16,8 @@ fn main() {
     let mut iv = [0u8; 16];
     rand::thread_rng().fill(&mut iv);
 
-    // Plain text data to be encrypted
-    let plain_text = b"exampleplaintext"; // This must be a multiple of the block size (16 bytes)
+    // Cria dados teste para serem criptografados
+    let plain_text = b"exampleplaintext";
     println!("Plain text: {:?}", plain_text);
 
     // Criptografa os dados
