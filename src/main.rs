@@ -1,97 +1,54 @@
-use std::{
-    env, fs, io::Read
-};
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::{tcp::WriteHalf, TcpListener},
-};
+use clap::{Parser, Subcommand };
+use trabalho_lp::{client::{SendingClient, FetchingClient}, server::Server};
 
-#[tokio::main]
-async fn main() {
-    // cria servidor na porta 8080
-    let listener = TcpListener::bind("localhost:8080").await.unwrap();
-
-    // loop para aceitar conexões
-    loop {
-        // aceita conexão
-        let (mut socket, _) = listener.accept().await.unwrap();
-
-        // cria thread para lidar com a conexão
-        tokio::spawn(async move {
-            // separa leitura e escrita
-            let (reader, mut writer) = socket.split();
-
-            // cria buffer para leitura
-            let mut reader = BufReader::new(reader);
-
-            // cria string para armazenar a linha
-            let mut line = String::new();
-
-            loop {
-                // lê linha
-                let byte_read = reader.read_line(&mut line).await.unwrap();
-
-                if byte_read == 0 {
-                    break;
-                }
-
-                // pega o diretório atual
-                let mut current_path = env::current_dir().unwrap();
-
-                // adiciona o caminho da requisição
-                current_path.push(&line.trim());
-
-                println!("Request: {}", current_path.display());
-
-                // faz o stream do arquivo
-                file_stream(&mut writer, current_path.to_str().unwrap()).await;
-            };
-        });
-    }
+#[derive(Parser, Debug)]
+#[clap(author, version, about)]
+struct Args {
+    #[clap(subcommand)]
+    command: Command,
 }
 
-async fn file_stream(writer: &mut WriteHalf<'_>, path: &str) {
-    // pega o tamanho do arquivo
-    let file_length = fs::metadata(path).unwrap().len();
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Requests a file from the remote server.
+    Get {
+        /// Secret for the file request.
+        #[clap(short, long)]
+        secret: String,
+    },
+    /// Sends a file to the remote server.
+    Send {
+        #[clap(short, long)]
+        file: String,
+    },
 
-    // calcula a quantidade de chunks
-    let mut chunks = (file_length / 1024) + 1;
+    /// Runs the remote proxy server.
+    Server {},
+}
 
-    // abre o arquivo
-    let file = fs::File::open(path).unwrap();
+#[tokio::main]
+async fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
+    match command {
+        Command::Server {} => {
+            let server = Server::new().await;
 
-    println!("File length: {}", file_length);
-    println!("Chunks: {}", chunks);
+            server.listen().await;
+        }
+        Command::Send { file } => {
+            let sending_client = SendingClient::new(file).await;
 
-    // quantidade de bytes lidos
-    let mut amount_read = 0;
+            sending_client.connect().await;
+        }
+        Command::Get { secret } => {
+            let fetching_client = FetchingClient::new(secret).await;
 
-    // loop para ler o arquivo
-    while chunks > 0 {
-        // clona o arquivo (coisa do rust)
-        let mut file = file.try_clone().unwrap();
-
-        // calcula o tamanho do chunk (1024 bytes ou o restante do arquivo)
-        let chunk_size: usize = if file_length - amount_read > 1024 {
-            1024
-        } else {
-            usize::try_from(file_length - amount_read).unwrap()
-        };
-
-        // cria buffer para chunk
-        let mut buffer = vec![0; chunk_size];
-
-
-        // lê o chunk
-        file.read(&mut buffer).unwrap();
-        
-        println!("Buffer: {:?}", buffer); 
-        
-        // manda o chunk para o cliente
-        let _ = writer.write_all(&buffer).await.unwrap();
-        
-        chunks -= 1;
-        amount_read += chunk_size as u64;
-        // std::thread::sleep(std::time::Duration::from_secs(1));
+            fetching_client.connect().await;
+        }
     }
+
+    Ok(())
+}
+
+fn main() {
+    run(Args::parse().command);
 }
