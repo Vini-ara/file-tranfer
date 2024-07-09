@@ -120,11 +120,13 @@ pub enum ClientMessage {
     // inicia conexão com o servidor
     Hello,
 
-    RequestFileDownload { nome: String },
+    RequestFileDownload { secret: String },
+
+    RequestFileUpload { nome: String },
 
     // Inicia upload de arquivo 
     // parâmetros: nome do arquivo, tamanho do arquivo
-    InitFileUpload { nome: String, tamanho: u64},
+    InitFileUpload { secret: String },
 
     // Continua upload de arquivo
     // parâmetros: chunk de arquivo
@@ -141,7 +143,7 @@ pub enum ClientMessage {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerMessage {
-    AcceptFileDownload { tamanho: u64, chunks: u64 },
+    AcceptFileDownload { nome: String, tamanho: u64, chunks: u64 },
 
     // Continua dowload de arquivo
     // parâmetros: chunk de arquivo
@@ -149,11 +151,19 @@ pub enum ServerMessage {
 
     FinalizeDownload,
 
+    AcceptFileUpload { secret: String },
+
+    Error(String),
+
     Disconnect
 }
 
-
-
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FileData {
+    pub secret: String,
+    pub fileName: String,
+    pub path: String,
+}
 
 pub fn serialize_message<T: Serialize>(message: T) -> String {
     let delimiter = '\n';

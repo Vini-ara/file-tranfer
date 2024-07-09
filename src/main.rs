@@ -1,3 +1,8 @@
+extern crate dotenv;
+
+use dotenv::dotenv;
+use std::env;
+
 use clap::{Parser, Subcommand };
 use trabalho_lp::{client::{SendingClient, FetchingClient}, server::Server};
 
@@ -50,5 +55,6 @@ async fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn main() {
+    dotenv().ok();
     run(Args::parse().command);
 }

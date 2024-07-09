@@ -1,18 +1,23 @@
 use std::{
+    env,
     fmt::Debug,
     fs::{self, OpenOptions},
     io::{Read, Write},
     path::Path,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
 };
+use rand::{distributions::Alphanumeric, Rng};
 
-use crate::common::{
-    deserialize_message, serialize_message, ClientMessage, FileStream, ServerMessage,
+use mongodb::{
+    bson::{doc, Document},
+    Client, Collection,
 };
+
+use crate::common::{deserialize_message, serialize_message, ClientMessage, FileData, ServerMessage};
 
 #[derive(Debug, Clone)]
 pub struct Server {}
@@ -50,6 +55,15 @@ impl Server {
 
         let mut buffer = Vec::new();
 
+        let connection_string = env::var("MONGO_URL").unwrap();
+        let db_name = env::var("DATABASE_NAME").unwrap();
+
+        let client = Client::with_uri_str(connection_string.as_str())
+            .await
+            .unwrap();
+
+        let database = client.database(db_name.as_str());
+
         loop {
             reader.read_until(b'\n', &mut buffer).await.unwrap();
 
@@ -62,11 +76,49 @@ impl Server {
             match message {
                 ClientMessage::Hello => {
                     println!("Recebido hello de {}", addr);
-                }
-                ClientMessage::InitFileUpload { nome, tamanho } => {
-                    println!("Recebido init file upload de {}, size {}", addr, tamanho);
+                },
+                ClientMessage::RequestFileUpload { nome } => {
+                    println!("Recebido request file upload de {}", addr);
 
-                    let path_str = format!("./files/{}", nome);
+                    let secret: String = rand::thread_rng()
+                        .sample_iter(&Alphanumeric)
+                        .take(7)
+                        .map(char::from)
+                        .collect();
+
+                    let collection = database.collection("files");
+
+                    let is_secret_valid = collection
+                        .find_one(doc! { "secret": &secret }, None)
+                        .await
+                        .unwrap();
+
+                    println!("is_secret {:?}", is_secret_valid);
+
+                    if is_secret_valid != None {
+                        println!("Erro ao criar arquivo");
+                        let message = serialize_message(ServerMessage::Error("Erro ao criar arquivo".to_string()));
+                        writter.write_all(message.as_bytes()).await.unwrap();
+                        break;
+                    }
+
+                    let path_str = format!("./files/{}", secret);
+
+                    collection
+                        .insert_one(doc! { "path": &path_str, "secret": &secret, "fileName": nome }, None)
+                        .await
+                        .unwrap();
+
+                    let message = serialize_message(ServerMessage::AcceptFileUpload {
+                        secret: secret.clone(),
+                    });
+
+                    writter.write_all(message.as_bytes()).await.unwrap();
+                },
+                ClientMessage::InitFileUpload { secret } => {
+                    println!("Recebido init file upload de {}", addr);
+
+                    let path_str = format!("./files/{}", secret);
 
                     let path = Path::new(&path_str);
 
@@ -113,16 +165,33 @@ impl Server {
 
                     println!("Upload finalizado de {}", addr);
                 }
-                ClientMessage::RequestFileDownload { nome } => {
+                ClientMessage::RequestFileDownload { secret } => {
                     println!("Recebido request file download de {}", addr);
 
-                    let path_str = format!("./files/{}", nome);
+                    let collection: Collection<FileData> = database.collection("files");
+
+                    let file_data = collection
+                        .find_one(doc! { "secret": &secret }, None)
+                        .await
+                        .unwrap();
+
+                    if file_data.is_none() {
+                        println!("Erro ao achar arquivo");
+                        let message = serialize_message(ServerMessage::Error("Erro ao achar arquivo".to_string()));
+                        writter.write_all(message.as_bytes()).await.unwrap();
+                        break;
+                    }
+
+                    let file_data = file_data.unwrap();
+
+                    let path_str = format!("./files/{}", secret);
 
                     let file_length = fs::metadata(&path_str).unwrap().len();
 
                     let mut chunks = (file_length / 1024) + 1;
 
                     let message = ServerMessage::AcceptFileDownload {
+                        nome: file_data.fileName.clone(),
                         tamanho: file_length,
                         chunks,
                     };
