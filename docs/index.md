@@ -10,7 +10,7 @@ nav_order: 1
 
 ## Autores
 
-### - Filipe Abadi Marcelino - 190087161
+### - Filipe Abadia Marcelino - 190087161
 ### - Tiago Leão Buson - 200034162
 ### - Vinícius da Silva Araujo - 221001981
 
@@ -22,7 +22,7 @@ nav_order: 1
 
 ## Atribuições de cada Participante
 
-### - Filipe Abadi Marcelino
+### - Filipe Abadia Marcelino
 - Codificação, Criptografia, Histórico da Linguagem, Construtores, Legibilidade, Capacidade de Escrita
 ### - Tiago Leão Buson
 - Codificação, Configuração da Wiki, Slides de apresentação, Confiabilidade, Custo, Exemplos
@@ -33,12 +33,12 @@ nav_order: 1
 
 Todos os links a seguir foram utilizados para desenvolver o projeto e a apresentação.
 
-[Site do Rust](https://www.rust-lang.org)
-[Tema da Wiki](https://github.com/just-the-docs/just-the-docs?tab=readme-ov-file)
-[Tokio](https://docs.rs/tokio/latest/tokio/)
-[Blog do Discord](https://discord.com/blog/why-discord-is-switching-from-go-to-rust)
-[Blog do Dropbox](https://dropbox.tech/infrastructure/rewriting-the-heart-of-our-sync-engine)
-[Blog do Figma](https://www.figma.com/pt-br/blog/rust-in-production-at-figma/)
+- [Site do Rust](https://www.rust-lang.org)
+- [Tema da Wiki](https://github.com/just-the-docs/just-the-docs?tab=readme-ov-file)
+- [Tokio](https://docs.rs/tokio/latest/tokio/)
+- [Blog do Discord](https://discord.com/blog/why-discord-is-switching-from-go-to-rust)
+- [Blog do Dropbox](https://dropbox.tech/infrastructure/rewriting-the-heart-of-our-sync-engine)
+- [Blog do Figma](https://www.figma.com/pt-br/blog/rust-in-production-at-figma/)
 
 
 
