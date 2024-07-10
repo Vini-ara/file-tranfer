@@ -1,10 +1,9 @@
 extern crate dotenv;
 
 use dotenv::dotenv;
-use std::env;
 
 use clap::{Parser, Subcommand };
-use trabalho_lp::{client::{SendingClient, FetchingClient}, server::Server};
+use file_transfer::{client::{SendingClient, FetchingClient}, server::Server};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]

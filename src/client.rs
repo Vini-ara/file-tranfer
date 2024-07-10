@@ -50,8 +50,6 @@ impl SendingClient {
 
             match message {
                 ServerMessage::AcceptFileUpload { secret } => {
-                    println!("Recebido accept file upload do server");
-
                     let file_name = self.file.clone();
 
                     let file_length = fs::metadata(&file_name).unwrap().len();
@@ -135,8 +133,6 @@ impl FetchingClient {
 
             match message {
                 ServerMessage::AcceptFileDownload { nome, tamanho, chunks } => {
-                    println!("Recebido accept file download de {}, size {}, chunks {}", nome, tamanho, chunks);
-
                     let file_name = nome.clone();
 
                     let home = dirs::home_dir().unwrap();
@@ -164,14 +160,11 @@ impl FetchingClient {
 
                         match message {
                             ServerMessage::ContinueFileDownload(data) => {
-                                println!("Recebido continue file download do server");
-
                                 let mut file = file.try_clone().unwrap();
 
                                 file.write_all(&data).unwrap();
                             }
                             ServerMessage::FinalizeDownload => {
-                                println!("Recebido finalize download do server");
                                 break;
                             },
                             ServerMessage::Error(mensagem) => {
@@ -191,7 +184,6 @@ impl FetchingClient {
                     break;
                 },
                 ServerMessage::FinalizeDownload => {
-                    println!("Recebido finalize download do server");
                     break;
                 },
                 ServerMessage::Error(mensagem) => {

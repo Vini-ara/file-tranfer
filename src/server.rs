@@ -13,11 +13,13 @@ use tokio::{
 use rand::{distributions::Alphanumeric, Rng};
 
 use mongodb::{
-    bson::{doc, Document},
+    bson::doc,
     Client, Collection,
 };
 
-use crate::common::{deserialize_message, serialize_message, ClientMessage, FileData, ServerMessage};
+use crate::common::{
+    deserialize_message, encrypt_large_file, decrypt_large_file, serialize_message, ClientMessage, FileData, ServerMessage
+};
 
 #[derive(Debug, Clone)]
 pub struct Server {}
@@ -76,7 +78,7 @@ impl Server {
             match message {
                 ClientMessage::Hello => {
                     println!("Recebido hello de {}", addr);
-                },
+                }
                 ClientMessage::RequestFileUpload { nome } => {
                     println!("Recebido request file upload de {}", addr);
 
@@ -93,11 +95,11 @@ impl Server {
                         .await
                         .unwrap();
 
-                    println!("is_secret {:?}", is_secret_valid);
-
                     if is_secret_valid != None {
                         println!("Erro ao criar arquivo");
-                        let message = serialize_message(ServerMessage::Error("Erro ao criar arquivo".to_string()));
+                        let message = serialize_message(ServerMessage::Error(
+                            "Erro ao criar arquivo".to_string(),
+                        ));
                         writter.write_all(message.as_bytes()).await.unwrap();
                         break;
                     }
@@ -105,7 +107,10 @@ impl Server {
                     let path_str = format!("./files/{}", secret);
 
                     collection
-                        .insert_one(doc! { "path": &path_str, "secret": &secret, "fileName": nome }, None)
+                        .insert_one(
+                            doc! { "path": &path_str, "secret": &secret, "fileName": nome },
+                            None,
+                        )
                         .await
                         .unwrap();
 
@@ -114,11 +119,11 @@ impl Server {
                     });
 
                     writter.write_all(message.as_bytes()).await.unwrap();
-                },
+                }
                 ClientMessage::InitFileUpload { secret } => {
                     println!("Recebido init file upload de {}", addr);
 
-                    let path_str = format!("./files/{}", secret);
+                    let path_str = format!("/tmp/{}", secret);
 
                     let path = Path::new(&path_str);
 
@@ -144,8 +149,6 @@ impl Server {
 
                         match message {
                             ClientMessage::ContinueFileUpload(data) => {
-                                println!("Recebido continue file upload de {}", addr);
-
                                 let mut file = file.try_clone().unwrap();
 
                                 file.write_all(&data).unwrap();
@@ -163,6 +166,10 @@ impl Server {
                         buffer.clear();
                     }
 
+                    encrypt_large_file(&path_str, &format!("./files/{}", secret), secret).unwrap();
+
+                    fs::remove_file(path_str).unwrap();
+
                     println!("Upload finalizado de {}", addr);
                 }
                 ClientMessage::RequestFileDownload { secret } => {
@@ -177,7 +184,9 @@ impl Server {
 
                     if file_data.is_none() {
                         println!("Erro ao achar arquivo");
-                        let message = serialize_message(ServerMessage::Error("Erro ao achar arquivo".to_string()));
+                        let message = serialize_message(ServerMessage::Error(
+                            "Erro ao achar arquivo".to_string(),
+                        ));
                         writter.write_all(message.as_bytes()).await.unwrap();
                         break;
                     }
@@ -186,7 +195,11 @@ impl Server {
 
                     let path_str = format!("./files/{}", secret);
 
-                    let file_length = fs::metadata(&path_str).unwrap().len();
+                    let output = format!("/tmp/{}", secret);
+
+                    decrypt_large_file(&path_str, &output, secret).unwrap();
+
+                    let file_length = fs::metadata(&output).unwrap().len();
 
                     let mut chunks = (file_length / 1024) + 1;
 
@@ -200,7 +213,7 @@ impl Server {
 
                     writter.write_all(message.as_bytes()).await.unwrap();
 
-                    let file = fs::File::open(path_str).unwrap();
+                    let file = fs::File::open(&output).unwrap();
 
                     println!("File length: {}", file_length);
                     println!("Chunks: {}", chunks);
@@ -227,17 +240,15 @@ impl Server {
                         file.read(&mut buffer).unwrap();
 
                         let message =
-                            serialize_message(ServerMessage::ContinueFileDownload(buffer.clone()));
+                            serialize_message(ServerMessage::ContinueFileDownload(buffer));
 
-                        // manda o chunk para o cliente
                         writter.write_all(message.as_bytes()).await.unwrap();
-
-                        println!("Enviando chunk de tamanho: {}", chunk_size);
 
                         chunks -= 1;
                         amount_read += chunk_size as u64;
-                        // std::thread::sleep(std::time::Duration::from_secs(1));
                     }
+
+                    fs::remove_file(output).unwrap();
 
                     println!("Finalizando Envio");
 
