@@ -9,9 +9,13 @@ nav_order: 2
 
 O file transfer é um projeto em rust para transferir arquivos entre dois clientes, o projeto se baseia em um servidor e dois tipos de cliente se comunicando com esse servidor, um cliente que envia um arquivo e outro que faz o download desse arquivo. A comunicação entre cliente e servidor é feita através de um protocolo TCP, e para fins de segurança os arquivos são salvos de forma criptografada no servidor utilizando criptografia XChaCha20.
 
+## Compilando o projeto
+
+Para compilar o projeto basta clonar esse repositório e rodar o comando ```cargo build --release```, assim um executável é gerado na pasta ```./target/release/```.
+
 ## Servidor
 
-Para rodar o servidor é necessário primeiramente um banco de dados ```mongodb``` rodando, e um arquivo .env no mesmo diretório do executável contendo as variáveis ```MONGO_URL``` e ```DATABASE_NAME```. Feito isso basta ter uma pasta com o nomes ```files``` na raiz do diretório e rodar o executável da seguinte forma ```file-transfer server```.
+Para rodar o servidor é necessário primeiramente um banco de dados ```mongodb``` rodando, e um arquivo .env no mesmo diretório do executável contendo as variáveis ```MONGO_URL``` e ```DATABASE_NAME```. Feito isso basta rodar o executável da seguinte forma ```file-transfer server```.
 
 ## Enviando um arquivo
 
