@@ -55,5 +55,5 @@ async fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
 
 fn main() {
     dotenv().ok();
-    run(Args::parse().command);
+    let _ = run(Args::parse().command);
 }

@@ -3,7 +3,6 @@ use std::{
     fmt::Debug,
     fs::{self, OpenOptions},
     io::{Read, Write},
-    path::Path,
     sync::Arc,
 };
 use tokio::{
@@ -11,7 +10,7 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 use rand::{distributions::Alphanumeric, Rng};
-
+use dirs;
 use mongodb::{
     bson::doc,
     Client, Collection,
@@ -26,6 +25,18 @@ pub struct Server {}
 
 impl Server {
     pub async fn new() -> Self {
+        let file_transfer_dir = dirs::public_dir().unwrap().join("file_transfer");
+
+        if !file_transfer_dir.exists() {
+            fs::create_dir(&file_transfer_dir).unwrap();
+        }
+
+        let tmp_dir = file_transfer_dir.join("tmp");
+
+        if !tmp_dir.exists() {
+            fs::create_dir(&tmp_dir).unwrap();
+        }
+
         Server {}
     }
 
@@ -104,11 +115,11 @@ impl Server {
                         break;
                     }
 
-                    let path_str = format!("./files/{}", secret);
+                    let files_dir = dirs::public_dir().unwrap().join("file_transfer").join(&secret);
 
                     collection
                         .insert_one(
-                            doc! { "path": &path_str, "secret": &secret, "fileName": nome },
+                            doc! { "path": files_dir.to_str().unwrap(), "secret": &secret, "fileName": nome },
                             None,
                         )
                         .await
@@ -123,20 +134,20 @@ impl Server {
                 ClientMessage::InitFileUpload { secret } => {
                     println!("Recebido init file upload de {}", addr);
 
-                    let path_str = format!("/tmp/{}", secret);
+                    let path = dirs::public_dir().unwrap().join("file_transfer").join("tmp").join(&secret);
 
-                    let path = Path::new(&path_str);
+                    let path_str = &path.to_str().unwrap();
 
                     let mut buffer = Vec::new();
 
-                    let file = OpenOptions::new().append(true).create(true).open(path);
-
-                    let file = file.unwrap();
-
                     println!(
                         "Criando arquivo e entrando no loop pra receber os dados {}",
-                        path_str
+                        &path_str
                     );
+
+                    let file = OpenOptions::new().append(true).create(true).open(&path);
+
+                    let file = file.unwrap();
 
                     loop {
                         reader.read_until(b'\n', &mut buffer).await.unwrap();
@@ -166,9 +177,11 @@ impl Server {
                         buffer.clear();
                     }
 
-                    encrypt_large_file(&path_str, &format!("./files/{}", secret), secret).unwrap();
+                    let files_dir = dirs::public_dir().unwrap().join("file_transfer").join(&secret);
 
-                    fs::remove_file(path_str).unwrap();
+                    encrypt_large_file(&path_str, files_dir.to_str().unwrap(), secret).unwrap();
+
+                    fs::remove_file(&path_str).unwrap();
 
                     println!("Upload finalizado de {}", addr);
                 }
@@ -193,13 +206,13 @@ impl Server {
 
                     let file_data = file_data.unwrap();
 
-                    let path_str = format!("./files/{}", secret);
+                    let path_str = dirs::public_dir().unwrap().join("file_transfer").join(&secret);
 
-                    let output = format!("/tmp/{}", secret);
+                    let tmp_dir = dirs::public_dir().unwrap().join("file_transfer").join("tmp").join(&secret);
 
-                    decrypt_large_file(&path_str, &output, secret).unwrap();
+                    decrypt_large_file(&path_str.to_str().unwrap(), &tmp_dir.to_str().unwrap(), secret).unwrap();
 
-                    let file_length = fs::metadata(&output).unwrap().len();
+                    let file_length = fs::metadata(&tmp_dir).unwrap().len();
 
                     let mut chunks = (file_length / 1024) + 1;
 
@@ -213,7 +226,7 @@ impl Server {
 
                     writter.write_all(message.as_bytes()).await.unwrap();
 
-                    let file = fs::File::open(&output).unwrap();
+                    let file = fs::File::open(&tmp_dir).unwrap();
 
                     println!("File length: {}", file_length);
                     println!("Chunks: {}", chunks);
@@ -248,7 +261,7 @@ impl Server {
                         amount_read += chunk_size as u64;
                     }
 
-                    fs::remove_file(output).unwrap();
+                    fs::remove_file(tmp_dir).unwrap();
 
                     println!("Finalizando Envio");
 

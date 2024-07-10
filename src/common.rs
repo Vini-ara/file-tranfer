@@ -244,6 +244,8 @@ pub fn encrypt_large_file(
     password: String
 ) -> Result<(), orion::errors::UnknownCryptoError> {
     let mut source_file = File::open(file_path).expect("Failed to open input file");
+    println!("Input file opened");
+    println!("Output path: {}", output_path);
     let mut dist = File::create(output_path).expect("Failed to create output file");
 
     let mut src = Vec::new();
@@ -255,7 +257,7 @@ pub fn encrypt_large_file(
     let key = create_key(password, nonce.clone());
     let nonce = Nonce::from_slice(nonce.as_slice()).unwrap();
 
-    for (n_chunk, src_chunk) in src.chunks(CHUNK_SIZE).enumerate() {
+    for (_n_chunk, src_chunk) in src.chunks(CHUNK_SIZE).enumerate() {
         encrypt_core(&mut dist, src_chunk.to_vec(), &key, nonce)
     }
 
@@ -280,7 +282,7 @@ pub fn decrypt_large_file(
     let key = create_key(password, nonce.clone());
     let nonce = Nonce::from_slice(nonce.as_slice()).unwrap();
 
-    for (n_chunk, src_chunk) in src.chunks(CHUNK_SIZE + CHACHA_KEYSIZE + POLY1305_OUTSIZE).enumerate() {
+    for (_n_chunk, src_chunk) in src.chunks(CHUNK_SIZE + CHACHA_KEYSIZE + POLY1305_OUTSIZE).enumerate() {
         decrypt_core(&mut output_file, src_chunk.to_vec(), &key, nonce);
     }
 

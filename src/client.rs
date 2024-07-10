@@ -1,4 +1,4 @@
-use std::{fs::{self, OpenOptions}, io::Write, path::Path};
+use std::{fs::{self, OpenOptions}, io::Write};
 
 use dirs;
 
@@ -132,19 +132,15 @@ impl FetchingClient {
             let message = deserialize_message(&buffer).unwrap();
 
             match message {
-                ServerMessage::AcceptFileDownload { nome, tamanho, chunks } => {
-                    let file_name = nome.clone();
+                ServerMessage::AcceptFileDownload { nome, tamanho: _tamanho, chunks: _chunks } => {
+                    let down_dir = dirs::download_dir().unwrap();
 
-                    let home = dirs::home_dir().unwrap();
-
-                    let path_str = format!("{}/Downloads/{}", home.to_str().unwrap(), file_name);
-
-                    let path = Path::new(path_str.as_str());
+                    let path = down_dir.join(nome);
 
                     let file = OpenOptions::new()
                         .append(true)
                         .create(true)
-                        .open(path)
+                        .open(&path)
                         .unwrap();
                     
                     let mut buffer = Vec::new();
@@ -180,7 +176,7 @@ impl FetchingClient {
                         buffer.clear();
                     }
 
-                    println!("Download finalizado, arquivo salvo em: {}", path_str);
+                    println!("Download finalizado, arquivo salvo em: {}", &path.to_str().unwrap());
                     break;
                 },
                 ServerMessage::FinalizeDownload => {
