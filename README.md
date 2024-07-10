@@ -6,9 +6,13 @@ Transferir arquivos é uma tarefa comum do dia a dia de milhares de pessoas, e m
 
 A proposta do projeto é ser uma ferramenta de linha de comando útil para se transferir arquivos de forma simples. Com apenas um comando é possível enviar um arquivo para um servidor, o que gera um código que pode ser utilizado para resgatar e fazer o download desse arquivo.
 
+## Compilando o projeto
+
+Para compilar o projeto basta clonar esse repositório e rodar o comando ```cargo build --release```, assim um executável é gerado na pasta ```./target/release/```.
+
 ## Servidor
 
-Para rodar o servidor é necessário primeiramente um banco de dados ```mongodb``` rodando, e um arquivo .env no mesmo diretório do executável contendo as variáveis ```MONGO_URL``` e ```DATABASE_NAME```. Feito isso basta ter uma pasta com o nomes ```files``` na raiz do diretório e rodar o executável da seguinte forma ```file-transfer server```.
+Para rodar o servidor é necessário primeiramente um banco de dados ```mongodb``` rodando, e um arquivo .env no mesmo diretório do executável contendo as variáveis ```MONGO_URL``` e ```DATABASE_NAME```. Feito isso basta rodar o executável da seguinte forma ```file-transfer server```.
 
 ## Enviando um arquivo
 
